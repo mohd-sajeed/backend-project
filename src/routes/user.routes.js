@@ -33,6 +33,8 @@ router.route("/login").post(loginUser);
 
 // Defining a secured route for user logout, with JWT verification middleware and logoutUser function
 router.route("/logout").post(verifyJWT, logoutUser);
+
+// Define a POST route for '/refresh-token' that calls the 'refreshAccessToken' function when accessed
 router.route("/refresh-token").post(refreshAccessToken)
 
 // Exporting the router instance as the default module export

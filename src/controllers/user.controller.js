@@ -203,49 +203,62 @@ const logoutUser = asyncHandler(async (req, res) => {
      .json(new apiResponse(200,{}, "User logged Out Successfully"));
 });
 
+
+// Define an asynchronous function 'refreshAccessToken' using 'asyncHandler'
 const refreshAccessToken = asyncHandler(async(req,res)=>{
-const incomingRefreshToken= req.cookies.refreshToken || req.body.refreshToken
 
-if(!incomingRefreshToken){
-  throw new apiError(401, "unauthorized request")
-}
-
-try {
-  const decodedToken= jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+  // Get the refresh token from the cookies or the request body
+  const incomingRefreshToken= req.cookies.refreshToken || req.body.refreshToken
   
-   const user = await User.findById(decodedToken?._id)
-  
-    if(!user){
-      throw apiError(401, "Invalid refresh token")
-    }
-  
-    if(incomingRefreshToken !== user?.refreshToken){
-      throw new apiError(401,"Refresh token is expired or used")
-    }
-  
-  const options = {
-    httpOnly:true,
-    secure:true
+  // If there's no refresh token, throw an unauthorized request error
+  if(!incomingRefreshToken){
+    throw new apiError(401, "unauthorized request")
   }
   
-  const {accessToken,newRefreshToken}=await generateAccessAndRefreshTokens(user._id)
-  
-  return res.status(200)
-  .cookie("accessToken",accessToken,options)
-  .cookie("refreshToken",newRefreshToken, options)
-  .json(
-    new apiResponse(
-      200,
-      {accessToken,refreshToken: newRefreshToken},
-      "Access token refreshed"
+  // Use a try-catch block to handle potential errors
+  try {
+    // Verify the refresh token using the secret key
+    const decodedToken= jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+    
+    // Find the user associated with the decoded token's ID
+     const user = await User.findById(decodedToken?._id)
+    
+    // If the user doesn't exist, throw an error
+      if(!user){
+        throw apiError(401, "Invalid refresh token")
+      }
+    
+    // If the incoming refresh token doesn't match the user's refresh token, throw an error
+      if(incomingRefreshToken !== user?.refreshToken){
+        throw new apiError(401,"Refresh token is expired or used")
+      }
+    
+    // Define options for the cookies
+    const options = {
+      httpOnly:true,
+      secure:true
+    }
+    
+    // Generate new access and refresh tokens
+    const {accessToken,newRefreshToken}=await generateAccessAndRefreshTokens(user._id)
+    
+    // Set the status of the response to 200, set the cookies, and send the JSON response
+    return res.status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",newRefreshToken, options)
+    .json(
+      new apiResponse(
+        200,
+        {accessToken,refreshToken: newRefreshToken},
+        "Access token refreshed"
+      )
     )
-  )
-} catch (error) {
-  throw new apiError(401,error?.message || "Invalid refresh token")
-}
-
-})
-
-
+  } catch (error) {
+    // If there's an error, throw an error with the message
+    throw new apiError(401,error?.message || "Invalid refresh token")
+  }
+  
+  })
+  
 // Export the functions to be used by other parts of the application
 export { registerUser, loginUser, logoutUser,refreshAccessToken };
