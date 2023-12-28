@@ -13,6 +13,8 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 // Import apiResponse for standardizing API responses
 import apiResponse from "../utils/apiResponse.js";
 
+import Jwt  from "jsonwebtoken";
+
 // Define a function to generate access and refresh tokens for a user
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -143,14 +145,10 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   // Generate access and refresh tokens for the user
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    user._id
-  );
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
 
   // Retrieve the logged in user without sensitive fields like password and refresh token
-  const loggedInUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
+  const loggedInUser = await User.findById(user._id).select( "-password -refreshToken" )
 
   // Set options for HTTP cookies
   const options = {
@@ -161,7 +159,7 @@ const loginUser = asyncHandler(async (req, res) => {
   // Send back access and refresh tokens as cookies along with user data
   return res
     .status(200)
-    .cookie("AccessToken", accessToken, options)
+    .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
     .json(
       new apiResponse(
@@ -169,7 +167,7 @@ const loginUser = asyncHandler(async (req, res) => {
         {
           user: loggedInUser,
           accessToken,
-          refreshToken,
+          refreshToken
         },
         "User logged in Successfully"
       )
@@ -205,5 +203,49 @@ const logoutUser = asyncHandler(async (req, res) => {
      .json(new apiResponse(200,{}, "User logged Out Successfully"));
 });
 
+const refreshAccessToken = asyncHandler(async(req,res)=>{
+const incomingRefreshToken= req.cookies.refreshToken || req.body.refreshToken
+
+if(!incomingRefreshToken){
+  throw new apiError(401, "unauthorized request")
+}
+
+try {
+  const decodedToken= jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+  
+   const user = await User.findById(decodedToken?._id)
+  
+    if(!user){
+      throw apiError(401, "Invalid refresh token")
+    }
+  
+    if(incomingRefreshToken !== user?.refreshToken){
+      throw new apiError(401,"Refresh token is expired or used")
+    }
+  
+  const options = {
+    httpOnly:true,
+    secure:true
+  }
+  
+  const {accessToken,newRefreshToken}=await generateAccessAndRefreshTokens(user._id)
+  
+  return res.status(200)
+  .cookie("accessToken",accessToken,options)
+  .cookie("refreshToken",newRefreshToken, options)
+  .json(
+    new apiResponse(
+      200,
+      {accessToken,refreshToken: newRefreshToken},
+      "Access token refreshed"
+    )
+  )
+} catch (error) {
+  throw new apiError(401,error?.message || "Invalid refresh token")
+}
+
+})
+
+
 // Export the functions to be used by other parts of the application
-export { registerUser, loginUser, logoutUser };
+export { registerUser, loginUser, logoutUser,refreshAccessToken };
