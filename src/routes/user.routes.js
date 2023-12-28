@@ -1,9 +1,19 @@
+// Importing the Router class from the 'express' module
 import { Router } from "express";
-import {logoutUser, registerUser} from "../controllers/user.controller.js";
-import {upload} from "../middlewares/multer.middleware.js";
 
+// Importing specific functions from the user.controller.js file
+import { logoutUser, loginUser, registerUser } from "../controllers/user.controller.js";
+
+// Importing the 'upload' function from the multer.middleware.js file
+import { upload } from "../middlewares/multer.middleware.js";
+
+// Importing the 'verifyJWT' function from the auth.middleware.js file
+import { verifyJWT } from "../middlewares/auth.middleware.js";
+
+// Creating a new instance of the Router class
 const router = Router();
 
+// Defining a route for user registration and specifying middleware for file uploads and registerUser function
 router.route("/register").post(
   upload.fields([
     {
@@ -18,10 +28,11 @@ router.route("/register").post(
   registerUser
 );
 
-router.route("/login").post(loginUser)
+// Defining a route for user login and specifying loginUser function to handle it
+router.route("/login").post(loginUser);
 
+// Defining a secured route for user logout, with JWT verification middleware and logoutUser function
+router.route("/logout").post(verifyJWT, logoutUser);
 
-//secured routes
-router.route("/logout").post(verifyJWT, logoutUser)
-
+// Exporting the router instance as the default module export
 export default router;
